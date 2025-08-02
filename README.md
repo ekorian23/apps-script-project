@@ -1,4 +1,4 @@
-# Google Apps Script Portfolio
+# Google Apps Script Portofolio
 
 Kumpulan proyek Google Apps Script yang pernah saya buat untuk mengotomatisasi pekerjaan di Google Sheets dan layanan Google lainnya.
 
