@@ -4,7 +4,7 @@ Kumpulan proyek Google Apps Script yang pernah saya buat untuk mengotomatisasi p
 
 ## 📂 Daftar Proyek
 
-### 1. [Stok Opname](./stok-opname)
+### 1. [Stok Opname](./Stock%20Opname)
 Formulir berbasis HTML dan Apps Script untuk melakukan stok opname langsung di Google Sheets.
 - File: `Code.gs`, `index.html`
 - Fitur:
@@ -12,7 +12,7 @@ Formulir berbasis HTML dan Apps Script untuk melakukan stok opname langsung di G
   - Tampilan responsif
   - Data tersimpan otomatis
 
-### 2. [Mutasi Sheet ke Snipe-IT](./mutasi-sheet-to-snipeit)
+### 2. [Mutasi Sheet ke Snipe-IT](./Mutasi%20IT%20to%20snipeit)
 Script untuk mengirim data aset dan user dari Google Sheets ke sistem Snipe-IT melalui API.
 - File: `updateAssets.gs`, `insertNewUsers`
 - Fitur:
