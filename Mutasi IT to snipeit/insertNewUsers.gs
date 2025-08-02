@@ -26,7 +26,7 @@ function insertNewUsers() {
         let location_id = String(row[10] || "").trim();
 
         // Validasi employee_number
-        if (!/^(?:RG|SC)\.\d{2}\.\d{2}\.\d{2}\.\d{5}$/.test(employee_number)) {
+        if (!/^(?:NIP|NIP2)\.\d{2}\.\d{2}\.\d{2}\.\d{5}$/.test(employee_number)) {
             Logger.log('Invalid Employee Number Format: ' + employee_number);
             sheet.getRange(i, 9).setValue("Invalid Employee Number Format").setBackground('#f4cccc');
             continue;
@@ -90,4 +90,5 @@ function parseValidationErrors(messages) {
         }
     }
     return messages.join(', ');
+
 }
