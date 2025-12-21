@@ -1,32 +1,52 @@
-# Google Apps Script Portfolio
+# Google Apps Script – IT Operations & Automation Projects
 
 This repository contains a collection of Google Apps Script projects developed 
-to automate tasks and enhance internal operational workflows.
+to support IT Operations, internal automation, and asset management workflows.
 
-Each project leverages Google Apps Script, Google Sheets, and web interfaces 
-to streamline data entry, integration, and process automation.
+Each project is designed to reduce manual work, improve data accuracy, 
+and streamline operational processes using Google Sheets and API integrations.
 
-## 📦 Projects
+---
 
-### 📊 Stok Opname  
-Form-based inventory tracking tool with responsive UI for real-time stock entry 
-into Google Sheets.
+## 📂 Projects Overview
 
-### 🔄 Mutasi Sheet ke Snipe-IT  
-Automation scripts to synchronize assets and user data from Google Sheets to 
-the Snipe-IT asset management system via its API.
+### 📦 Paket RG Jogja – Package Management System
+Internal web-based system for tracking incoming and outgoing packages at 
+Ruangguru Jogja, complete with dashboard, SLA monitoring, and photo documentation.
 
-### 📦 Paket RG Jogja *(coming soon)*  
-Internal package management system for receiving, delivering, and monitoring 
-employee packages with real-time dashboard and SLA tracking. *(to be added)*
+🔗 View project:  
+[Paket RG Jogja](./Paket-RG-Jogja)
+
+---
+
+### 📊 Stock Opname – Employee Asset Self Reporting
+Annual employee self-reporting system for asset verification, allowing employees 
+to submit asset details, serial numbers, and MAC addresses through a web form.
+
+🔗 View project:  
+[Stock Opname](./Stock%20Opname)
+
+---
+
+### 🔄 Mutasi IT to Snipe-IT – Asset & User Synchronization
+Automation scripts to synchronize users and assets from Google Sheets into 
+Snipe-IT using REST API, including user creation, asset mutation, check-in, 
+and check-out workflows.
+
+🔗 View project:  
+[Mutasi IT to Snipe-IT](./Mutasi%20IT%20to%20snipeit)
+
+---
 
 ## 🧠 Tech Stack
 - Google Apps Script
-- HTML, CSS, JavaScript
 - Google Sheets
+- HTML, CSS, JavaScript
 - Google Drive
-- REST API integration (for systems like Snipe-IT)
+- REST API (Snipe-IT)
+
+---
 
 ## 👤 Author
-Eko Rian  
+**Eko Rian**  
 IT Operations & Automation Specialist
