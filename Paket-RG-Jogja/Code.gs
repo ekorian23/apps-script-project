@@ -14,34 +14,159 @@ function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
-function generateID(namaPenerima, ekspedisi) {
+// Fungsi Login
+function doLogin(username, password) {
+  try {
+    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Login');
+    
+    if (!sheet) {
+      return {
+        success: false,
+        message: 'Login sheet not found'
+      };
+    }
+    
+    const lastRow = sheet.getLastRow();
+    
+    if (lastRow < 2) {
+      return {
+        success: false,
+        message: 'No users registered'
+      };
+    }
+    
+    const data = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
+    
+    for (let i = 0; i < data.length; i++) {
+      const storedUsername = data[i][0];
+      const storedPassword = data[i][1];
+      
+      if (storedUsername && storedPassword) {
+        if (storedUsername.toString().trim() === username.trim() && 
+            storedPassword.toString().trim() === password.trim()) {
+          return {
+            success: true,
+            message: 'Login successful',
+            username: username.trim()
+          };
+        }
+      }
+    }
+    
+    return {
+      success: false,
+      message: 'Invalid username or password'
+    };
+    
+  } catch (error) {
+    console.error('Login Error:', error);
+    return {
+      success: false,
+      message: 'Error: ' + error.toString()
+    };
+  }
+}
+
+// Fungsi Logout
+function doLogout() {
+  return {
+    success: true,
+    message: 'Logged out successfully'
+  };
+}
+
+// Fungsi untuk cek session
+function checkSession(sessionUsername) {
+  try {
+    const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Login');
+    
+    if (!sheet) {
+      return {
+        success: false,
+        message: 'Login sheet not found'
+      };
+    }
+    
+    const lastRow = sheet.getLastRow();
+    
+    if (lastRow < 2) {
+      return {
+        success: false,
+        message: 'No users registered'
+      };
+    }
+    
+    const data = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    
+    for (let i = 0; i < data.length; i++) {
+      const storedUsername = data[i][0];
+      
+      if (storedUsername && storedUsername.toString().trim() === sessionUsername.trim()) {
+        return {
+          success: true,
+          message: 'Session valid',
+          username: sessionUsername.trim()
+        };
+      }
+    }
+    
+    return {
+      success: false,
+      message: 'Session expired or invalid'
+    };
+    
+  } catch (error) {
+    console.error('Session Check Error:', error);
+    return {
+      success: false,
+      message: 'Error: ' + error.toString()
+    };
+  }
+}
+
+function generateID(namaPenerima, ekspedisi, tanggalDiterima) {
   const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('MainData');
   const lastRow = sheet.getLastRow();
   
   const namaDepan = namaPenerima ? namaPenerima.split(' ')[0].toUpperCase() : 'UNKNOWN';
   const ekspedisiCode = ekspedisi ? ekspedisi.substring(0, 3).toUpperCase() : 'EXP';
   
-  let counter = 1;
-  if (lastRow > 1) {
-    const data = sheet.getRange(2, 1, lastRow - 1, 4).getValues();
-    
-    const filteredData = data.filter(row => {
-      const existingID = row[0];
-      if (!existingID) return false;
-      
-      const idParts = existingID.split('-');
-      if (idParts.length !== 4) return false;
-      
-      const existingNama = idParts[1];
-      const existingEkspedisi = idParts[2];
-      
-      return existingNama === namaDepan && existingEkspedisi === ekspedisiCode;
-    });
-    
-    counter = filteredData.length + 1;
+  // Format tanggal menjadi 6 digit: DDMMYY
+  let tanggalCode;
+  try {
+    const date = tanggalDiterima ? new Date(tanggalDiterima) : new Date();
+    tanggalCode = Utilities.formatDate(date, Session.getScriptTimeZone(), 'ddMMyy');
+  } catch (e) {
+    tanggalCode = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'ddMMyy');
   }
   
-  return `RG-${namaDepan}-${ekspedisiCode}-${counter.toString().padStart(3, '0')}`;
+  // Ambil semua ID yang sudah ada
+  const existingIDs = new Set();
+  if (lastRow > 1) {
+    const data = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    data.forEach(row => {
+      if (row[0] && row[0].toString().trim() !== '') {
+        existingIDs.add(row[0].toString().trim());
+      }
+    });
+  }
+  
+  // Cari ID yang unik dengan counter
+  let counter = 1;
+  let maxAttempts = 999;
+  
+  while (counter <= maxAttempts) {
+    const newID = `RG-${namaDepan}-${ekspedisiCode}-${tanggalCode}-${counter.toString().padStart(3, '0')}`;
+    
+    if (!existingIDs.has(newID)) {
+      return newID;
+    }
+    
+    counter++;
+  }
+  
+  const timestamp = new Date().getTime().toString().slice(-6);
+  return `RG-${namaDepan}-${ekspedisiCode}-${timestamp}`;
 }
 
 function getAvailableIDs() {
@@ -51,7 +176,7 @@ function getAvailableIDs() {
     
     if (lastRow < 2) return [];
     
-    const data = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
+    const data = sheet.getRange(2, 1, lastRow - 1, 11).getValues(); // 11 kolom (A sampai K)
     
     const availableIDs = data.filter(row => {
       const id = row[0];
@@ -65,12 +190,13 @@ function getAvailableIDs() {
   }
 }
 
-function saveData(formData) {
+// UPDATED: Menambahkan parameter packageType
+function saveData(formData, username) {
   try {
     const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('MainData');
     const lastRow = sheet.getLastRow();
     
-    const finalID = generateID(formData.namaPenerima, formData.ekspedisi);
+    const finalID = generateID(formData.namaPenerima, formData.ekspedisi, formData.tanggalDiterima);
     
     let fileUrl = '';
     if (formData.documentation) {
@@ -85,21 +211,28 @@ function saveData(formData) {
       fileUrl = file.getUrl();
     }
     
+    const now = new Date();
+    const receiveDateTime = new Date(formData.tanggalDiterima);
+    
+    // UPDATE: Simpan dengan 12 kolom (A sampai L)
     const newRow = [
       finalID,
       formData.namaPenerima,
-      new Date(formData.tanggalDiterima),
-      formData.ekspedisi,
-      fileUrl,
+      now, // Kolom C - timestamp
+      formData.ekspedisi, // Kolom D - ekspedisi
+      fileUrl, // Kolom E - foto penerimaan
       '',
       '',
-      ''
+      '', // Kolom H - status
+      username || '', // Kolom I - username penerima
+      '', // Kolom J - username penyerahan
+      '', // Kolom K - SLA
+      formData.packageType || '' // Kolom L - Package Type (Document/Barang)
     ];
     
     // Cari baris kosong atau tambah di akhir
     let targetRow = lastRow + 1;
     
-    // Cek jika ada baris kosong di antara data
     if (lastRow >= 2) {
       const data = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
       for (let i = 0; i < data.length; i++) {
@@ -127,7 +260,7 @@ function saveData(formData) {
   }
 }
 
-function savePenyerahanData(formData) {
+function savePenyerahanData(formData, username) {
   try {
     const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('MainData');
     const lastRow = sheet.getLastRow();
@@ -139,7 +272,7 @@ function savePenyerahanData(formData) {
       };
     }
     
-    const data = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
+    const data = sheet.getRange(2, 1, lastRow - 1, 11).getValues(); // 11 kolom (A sampai K)
     let rowIndex = -1;
     
     for (let i = 0; i < data.length; i++) {
@@ -178,15 +311,24 @@ function savePenyerahanData(formData) {
       fileUrl = file.getUrl();
     }
     
+    let tanggalDiserahkan;
+    if (formData.tanggalDiserahkan) {
+      tanggalDiserahkan = new Date(formData.tanggalDiserahkan);
+    } else {
+      tanggalDiserahkan = new Date();
+    }
+    
     // Update data
-    sheet.getRange(rowIndex, 6).setValue(new Date(formData.tanggalDiserahkan));
+    sheet.getRange(rowIndex, 6).setValue(tanggalDiserahkan);
     sheet.getRange(rowIndex, 7).setValue(fileUrl);
     sheet.getRange(rowIndex, 8).setValue('done');
+    sheet.getRange(rowIndex, 10).setValue(username || '');
     
     return {
       success: true,
       message: 'Delivery data saved successfully!',
-      id: formData.id
+      id: formData.id,
+      tanggalDiserahkan: Utilities.formatDate(tanggalDiserahkan, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')
     };
     
   } catch (error) {
@@ -202,7 +344,6 @@ function getDashboardData() {
   try {
     const dashboardSheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('Dashboard');
     
-    // Cek jika sheet Dashboard ada dan memiliki rumus
     if (!dashboardSheet) {
       return getEmptyDashboardData();
     }
@@ -213,7 +354,6 @@ function getDashboardData() {
       return getEmptyDashboardData();
     }
     
-    // Ambil data dari hasil rumus ARRAYFORMULA di A2:F2
     const dashboardValues = dashboardSheet.getRange('A2:F2').getValues()[0];
     
     const totalPaket = dashboardValues[0] || 0;
@@ -222,7 +362,6 @@ function getDashboardData() {
     const overSLA = dashboardValues[3] || 0;
     const pendingIDsText = dashboardValues[5] || '';
     
-    // Convert pending IDs text ke array
     let idBelumSelesai = [];
     if (pendingIDsText && pendingIDsText.toString().trim() !== '') {
       idBelumSelesai = pendingIDsText.toString().split(',').map(id => id.trim()).filter(id => id !== '');
@@ -252,7 +391,7 @@ function getEmptyDashboardData() {
   };
 }
 
-// NEW FUNCTION: Get all package data for table - UPDATED WITH REVERSE
+// FIXED: Ambil data dari kolom A sampai L (12 kolom) termasuk Package Type
 function getAllPackageData() {
   try {
     const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName('MainData');
@@ -262,44 +401,57 @@ function getAllPackageData() {
       return [];
     }
     
-    // Ambil data dari kolom A sampai I (9 kolom)
-    const data = sheet.getRange(2, 1, lastRow - 1, 9).getValues();
+    // Ambil data dari kolom A sampai L (12 kolom)
+    const data = sheet.getRange(2, 1, lastRow - 1, 12).getValues();
     
     // REVERSE DATA: Data terbaru (paling bawah di sheet) jadi paling atas di table
     const reversedData = data.reverse();
     
     const packageData = reversedData
-      .filter(row => row[0] && row[0].toString().trim() !== '') // Filter baris dengan ID kosong
+      .filter(row => row[0] && row[0].toString().trim() !== '')
       .map((row, index) => {
         const id = row[0] || '';
+        const packageType = row[11] || ''; // Kolom L - Package Type
         const namaPenerima = row[1] || '';
         const tanggalDiterima = row[2] ? new Date(row[2]) : null;
         const ekspedisi = row[3] || '';
-        const fotoPenerimaan = convertToDirectImageUrl(row[4] || ''); // Convert URL
+        const fotoPenerimaan = convertToDirectImageUrl(row[4] || '');
         const tanggalDiserahkan = row[5] ? new Date(row[5]) : null;
-        const fotoPenyerahan = convertToDirectImageUrl(row[6] || ''); // Convert URL
+        const fotoPenyerahan = convertToDirectImageUrl(row[6] || '');
         const status = row[7] || '';
-        const slaStatus = row[8] || '';
+        const usernamePenerima = row[8] || '';
+        const usernamePenyerahan = row[9] || '';
+        const slaStatusRaw = row[10] || '';
         
-        // Format dates
         const formattedTanggalDiterima = tanggalDiterima ? 
-          Utilities.formatDate(tanggalDiterima, Session.getScriptTimeZone(), 'dd/MM/yyyy') : '';
+          Utilities.formatDate(tanggalDiterima, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm') : '';
         
         const formattedTanggalDiserahkan = tanggalDiserahkan ? 
-          Utilities.formatDate(tanggalDiserahkan, Session.getScriptTimeZone(), 'dd/MM/yyyy') : '';
+          Utilities.formatDate(tanggalDiserahkan, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm') : '';
         
-        // Determine status text
         let statusText = 'Pending';
         if (status === 'done') {
           statusText = 'Done';
         }
         
-        // Hitung row asli di spreadsheet (karena data di-reverse)
+        let slaStatusText = slaStatusRaw.toString().trim();
+
+        // Override SLA status: jika masih pending dan sudah > 3 hari, set Over SLA
+        if (status !== 'done' && tanggalDiterima) {
+          const now = new Date();
+          const diffMs = now - tanggalDiterima;
+          const diffDays = diffMs / (1000 * 60 * 60 * 24);
+          if (diffDays > 3) {
+            slaStatusText = 'Over SLA';
+          }
+        }
+                
         const originalIndex = data.length - 1 - index;
-        const actualRow = originalIndex + 2; // +2 karena mulai dari row 2
+        const actualRow = originalIndex + 2;
         
         return {
           id: id,
+          packageType: packageType, // Package Type dari kolom L
           namaPenerima: namaPenerima,
           tanggalDiterima: formattedTanggalDiterima,
           ekspedisi: ekspedisi,
@@ -307,7 +459,9 @@ function getAllPackageData() {
           tanggalDiserahkan: formattedTanggalDiserahkan,
           fotoPenyerahan: fotoPenyerahan,
           status: statusText,
-          slaStatus: slaStatus,
+          slaStatus: slaStatusText,
+          usernamePenerima: usernamePenerima,
+          usernamePenyerahan: usernamePenyerahan,
           rowIndex: actualRow,
           timestamp: tanggalDiterima ? tanggalDiterima.getTime() : 0
         };
@@ -322,20 +476,16 @@ function getAllPackageData() {
   }
 }
 
-// NEW FUNCTION: Convert Google Drive view URL to direct image URL
 function convertToDirectImageUrl(url) {
   if (!url || url.trim() === '') return '';
   
   try {
-    // Jika sudah direct URL, return as is
     if (url.includes('drive.google.com/uc?id=') || url.includes('lh3.googleusercontent.com')) {
       return url;
     }
     
-    // Extract file ID dari Google Drive URL
     let fileId = '';
     
-    // Pattern untuk berbagai format Google Drive URL
     const patterns = [
       /\/file\/d\/([a-zA-Z0-9_-]+)/,
       /id=([a-zA-Z0-9_-]+)/,
@@ -352,13 +502,12 @@ function convertToDirectImageUrl(url) {
     }
     
     if (fileId) {
-      // Return direct image URL untuk thumbnail/preview
       return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
     }
     
-    return url; // Return original URL jika tidak bisa extract
+    return url;
   } catch (error) {
     console.error('Error converting Google Drive URL:', error);
-    return url; // Return original URL jika error
+    return url;
   }
 }
